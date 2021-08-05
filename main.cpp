@@ -502,6 +502,7 @@ struct Tile {
 enum class State {
     Menu,
     Gameplay,
+    Credits,
 };
 
 SDL_Texture* charactersT;
@@ -512,6 +513,7 @@ SDL_Texture* rightArrowT;
 SDL_Texture* characterT;
 SDL_Texture* character2T;
 SDL_Texture* character3T;
+SDL_Texture* backArrowT;
 SDL_Texture* teethT;
 Entity player;
 std::vector<Entity> bots;
@@ -539,6 +541,11 @@ Mix_Music* music;
 Mix_Chunk* jumpS;
 Mix_Chunk* pickupS;
 Mix_Chunk* selectS;
+Text creditsText;
+Text authorText;
+Text creditText;
+Text credit2Text;
+SDL_FRect backArrowBtnR;
 
 void loadMap(std::string filename)
 {
@@ -670,6 +677,9 @@ void mainLoop()
                     }
                     Mix_PlayChannel(-1, selectS, 0);
                 }
+                if (SDL_PointInFRect(&mousePos, &creditsText.dstR)) {
+                    state = State::Credits;
+                }
                 if (SDL_PointInFRect(&mousePos, &leftArrowBtnR)) {
                     if (botsCountValueText.text == "2") {
                         botsCountValueText.setText(renderer, robotoF, "1", {});
@@ -710,6 +720,7 @@ void mainLoop()
         SDL_RenderCopyF(renderer, leftArrowT, 0, &leftArrowBtnR);
         SDL_RenderCopyF(renderer, rightArrowT, 0, &rightArrowBtnR);
         playText.draw(renderer);
+        creditsText.draw(renderer);
         SDL_RenderPresent(renderer);
     }
     else if (state == State::Gameplay) {
@@ -946,6 +957,47 @@ void mainLoop()
         SDL_RenderCopyF(renderer, charactersT, &characterR, &player.r);
         SDL_RenderPresent(renderer);
     }
+    else if (state == State::Credits) {
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT || event.type == SDL_KEYDOWN && event.key.keysym.scancode == SDL_SCANCODE_ESCAPE) {
+                running = false;
+                // TODO: On mobile remember to use eventWatch function (it doesn't reach this code when terminating)
+            }
+            if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED) {
+                SDL_RenderSetScale(renderer, event.window.data1 / (float)windowWidth, event.window.data2 / (float)windowHeight);
+            }
+            if (event.type == SDL_KEYDOWN) {
+                keys[event.key.keysym.scancode] = true;
+            }
+            if (event.type == SDL_KEYUP) {
+                keys[event.key.keysym.scancode] = false;
+            }
+            if (event.type == SDL_MOUSEBUTTONDOWN) {
+                buttons[event.button.button] = true;
+                if (SDL_PointInFRect(&mousePos,&backArrowBtnR)) {
+                    state = State::Menu;
+                }
+            }
+            if (event.type == SDL_MOUSEBUTTONUP) {
+                buttons[event.button.button] = false;
+            }
+            if (event.type == SDL_MOUSEMOTION) {
+                float scaleX, scaleY;
+                SDL_RenderGetScale(renderer, &scaleX, &scaleY);
+                mousePos.x = event.motion.x / scaleX;
+                mousePos.y = event.motion.y / scaleY;
+                realMousePos.x = event.motion.x;
+                realMousePos.y = event.motion.y;
+            }
+        }
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 0);
+        SDL_RenderClear(renderer);
+        authorText.draw(renderer);
+        creditText.draw(renderer);
+        credit2Text.draw(renderer);
+        SDL_RenderCopyF(renderer, backArrowT, 0, &backArrowBtnR);
+        SDL_RenderPresent(renderer);
+    }
 }
 
 int main(int argc, char* argv[])
@@ -973,6 +1025,7 @@ int main(int argc, char* argv[])
     character2T = IMG_LoadTexture(renderer, "res/character2.png");
     character3T = IMG_LoadTexture(renderer, "res/character3.png");
     teethT = IMG_LoadTexture(renderer, "res/teeth.png");
+    backArrowT = IMG_LoadTexture(renderer, "res/backArrow.png");
     music = Mix_LoadMUS("res/music.wav");
     jumpS = Mix_LoadWAV("res/jump.wav");
     pickupS = Mix_LoadWAV("res/pickup.wav");
@@ -1005,6 +1058,12 @@ int main(int argc, char* argv[])
     playText.dstR.h = 50;
     playText.dstR.x = leftArrowBtnR.x + leftArrowBtnR.w - playText.dstR.w / 2;
     playText.dstR.y = leftArrowBtnR.y + 100;
+    creditsText = playText;
+    creditsText.setText(renderer, robotoF, "Credits", {});
+    creditsText.dstR.w = 50;
+    creditsText.dstR.h = 20;
+    creditsText.dstR.x = playText.dstR.x + playText.dstR.w / 2 - creditsText.dstR.w / 2;
+    creditsText.dstR.y = playText.dstR.y + playText.dstR.h + 5;
     playerPointR.w = 32;
     playerPointR.h = 32;
     playerPointR.x = 0;
@@ -1033,10 +1092,28 @@ int main(int argc, char* argv[])
     enemy2PointsText.dstR.x = enemy2PointR.x + enemy2PointR.w;
     enemy3PointsText = playerPointsText;
     enemy3PointsText.dstR.x = enemy3PointR.x + enemy3PointR.w;
-gameBegin:
     teethR.w = 32;
     teethR.h = 32;
     randomizeTeethPosition(teethR, tiles);
+    authorText.setText(renderer, robotoF, "Author: Huberti", {});
+    authorText.dstR.w = 100;
+    authorText.dstR.h = 20;
+    authorText.dstR.x = windowWidth / 2 - authorText.dstR.w / 2;
+    authorText.dstR.y = 0;
+    creditText.setText(renderer, robotoF, "Smashicons", {});
+    creditText.dstR.w = 100;
+    creditText.dstR.h = 30;
+    creditText.dstR.x = windowWidth / 2 - creditText.dstR.w / 2;
+    creditText.dstR.y = authorText.dstR.y + authorText.dstR.h;
+    credit2Text.setText(renderer, robotoF, "Becris", {});
+    credit2Text.dstR.w = 100;
+    credit2Text.dstR.h = 30;
+    credit2Text.dstR.x = windowWidth / 2 - credit2Text.dstR.w / 2;
+    credit2Text.dstR.y = creditText.dstR.y + creditText.dstR.h;
+    backArrowBtnR.w = 32;
+    backArrowBtnR.h = 32;
+    backArrowBtnR.x = 0;
+    backArrowBtnR.y = 0;
     globalClock.restart();
 #ifdef __EMSCRIPTEN__
     emscripten_set_main_loop(mainLoop, 0, 1);
