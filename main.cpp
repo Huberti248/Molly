@@ -548,6 +548,7 @@ Text authorText;
 Text creditText;
 Text credit2Text;
 Text credit3Text;
+Text credit4Text;
 SDL_FRect backArrowBtnR;
 SDL_FRect soundR;
 bool soundsMuted = false;
@@ -627,7 +628,7 @@ void randomizeTeethPosition(SDL_FRect& teethR, std::vector<Tile> tiles)
     teethR.y = minY - teethR.h;
 }
 
-void restartLevel(Entity& player, std::vector<SDL_FRect>& applesRects, std::vector<Entity>& bots, SDL_FRect& teethR)
+void restartLevel(Entity& player, std::vector<SDL_FRect>& applesRects, std::vector<Entity>& bots, SDL_FRect& teethR, std::vector<Tile>& tiles)
 {
     player.r.x = windowWidth / 2 - player.r.w / 2;
     player.r.y = windowHeight - player.r.h;
@@ -637,6 +638,13 @@ void restartLevel(Entity& player, std::vector<SDL_FRect>& applesRects, std::vect
         bots[i].r = generateEnemyR();
     }
     player.hasTeeths = false;
+    tiles.clear();
+    if (random(0,1)) {
+        loadMap("map.tmx");
+    }
+    else {
+        loadMap("map2.tmx");
+    }
 }
 
 void muteMusicAndSounds()
@@ -674,7 +682,7 @@ void mainLoop()
                 buttons[event.button.button] = true;
                 if (SDL_PointInFRect(&mousePos, &playText.dstR)) {
                     state = State::Gameplay;
-                    restartLevel(player, applesRects, bots, teethR);
+                    restartLevel(player, applesRects, bots, teethR, tiles);
                     bots.clear();
                     playerPointsText.setText(renderer, robotoF, "0");
                     enemyPointsText.setText(renderer, robotoF, "0");
@@ -926,21 +934,21 @@ void mainLoop()
                 else if (numbers[i] == 1) {
                     if (SDL_HasIntersectionF(&bots[0].r, &teethR) && !player.hasTeeths) {
                         enemyPointsText.setText(renderer, robotoF, std::stoi(enemyPointsText.text) + 5);
-                        restartLevel(player, applesRects, bots, teethR);
+                        restartLevel(player, applesRects, bots, teethR, tiles);
                         break;
                     }
                 }
                 else if (numbers[i] == 2) {
                     if (SDL_HasIntersectionF(&bots[1].r, &teethR) && !player.hasTeeths) {
                         enemy2PointsText.setText(renderer, robotoF, std::stoi(enemy2PointsText.text) + 5);
-                        restartLevel(player, applesRects, bots, teethR);
+                        restartLevel(player, applesRects, bots, teethR, tiles);
                         break;
                     }
                 }
                 else if (numbers[i] == 3) {
                     if (SDL_HasIntersectionF(&bots[2].r, &teethR) && !player.hasTeeths) {
                         enemy3PointsText.setText(renderer, robotoF, std::stoi(enemy3PointsText.text) + 5);
-                        restartLevel(player, applesRects, bots, teethR);
+                        restartLevel(player, applesRects, bots, teethR, tiles);
                         break;
                     }
                 }
@@ -953,7 +961,7 @@ void mainLoop()
             }
         }
         if (player.hasTeeths && applesRects.size() == 0) {
-            restartLevel(player, applesRects, bots, teethR);
+            restartLevel(player, applesRects, bots, teethR, tiles);
         }
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
         SDL_RenderClear(renderer);
@@ -1036,6 +1044,7 @@ void mainLoop()
         creditText.draw(renderer);
         credit2Text.draw(renderer);
         credit3Text.draw(renderer);
+        credit4Text.draw(renderer);
         SDL_RenderCopyF(renderer, backArrowT, 0, &backArrowBtnR);
         SDL_RenderPresent(renderer);
     }
@@ -1078,7 +1087,7 @@ int main(int argc, char* argv[])
     player.r.h = 32;
     player.r.x = windowWidth / 2 - player.r.w / 2;
     player.r.y = windowHeight - player.r.h;
-    loadMap("map.tmx");
+    loadMap("map2.tmx");
     botsCountText.setText(renderer, robotoF, "Bots count: ", {});
     botsCountText.dstR.w = 100;
     botsCountText.dstR.h = 30;
@@ -1158,6 +1167,11 @@ int main(int argc, char* argv[])
     credit3Text.dstR.h = 30;
     credit3Text.dstR.x = windowWidth / 2 - credit3Text.dstR.w / 2;
     credit3Text.dstR.y = credit2Text.dstR.y + credit2Text.dstR.h;
+    credit4Text.setText(renderer, robotoF, "Freepik", {});
+    credit4Text.dstR.w = 100;
+    credit4Text.dstR.h = 30;
+    credit4Text.dstR.x = windowWidth / 2 - credit4Text.dstR.w / 2;
+    credit4Text.dstR.y = credit3Text.dstR.y + credit3Text.dstR.h;
     backArrowBtnR.w = 32;
     backArrowBtnR.h = 32;
     backArrowBtnR.x = 0;
