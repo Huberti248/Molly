@@ -515,6 +515,8 @@ SDL_Texture* character2T;
 SDL_Texture* character3T;
 SDL_Texture* backArrowT;
 SDL_Texture* teethT;
+SDL_Texture* muteT;
+SDL_Texture* unmuteT;
 Entity player;
 std::vector<Entity> bots;
 Clock globalClock;
@@ -545,7 +547,10 @@ Text creditsText;
 Text authorText;
 Text creditText;
 Text credit2Text;
+Text credit3Text;
 SDL_FRect backArrowBtnR;
+SDL_FRect soundR;
+bool soundsMuted = false;
 
 void loadMap(std::string filename)
 {
@@ -622,10 +627,10 @@ void randomizeTeethPosition(SDL_FRect& teethR, std::vector<Tile> tiles)
     teethR.y = minY - teethR.h;
 }
 
-void restartLevel(SDL_FRect& playerR, std::vector<SDL_FRect>& applesRects, std::vector<Entity>& bots, SDL_FRect& teethR)
+void restartLevel(Entity& player, std::vector<SDL_FRect>& applesRects, std::vector<Entity>& bots, SDL_FRect& teethR)
 {
-    playerR.x = windowWidth / 2 - playerR.w / 2;
-    playerR.y = windowHeight - playerR.h;
+    player.r.x = windowWidth / 2 - player.r.w / 2;
+    player.r.y = windowHeight - player.r.h;
     applesRects.clear();
     randomizeTeethPosition(teethR, tiles);
     for (int i = 0; i < bots.size(); ++i) {
@@ -634,13 +639,25 @@ void restartLevel(SDL_FRect& playerR, std::vector<SDL_FRect>& applesRects, std::
     player.hasTeeths = false;
 }
 
+void muteMusicAndSounds()
+{
+    Mix_VolumeMusic(0);
+    Mix_Volume(-1, 0);
+}
+
+void unmuteMusicAndSounds()
+{
+    Mix_VolumeMusic(128);
+    Mix_Volume(-1, 128);
+}
+
 void mainLoop()
 {
     float deltaTime = globalClock.restart();
     SDL_Event event;
     if (state == State::Menu) {
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT || event.type == SDL_KEYDOWN && event.key.keysym.scancode == SDL_SCANCODE_ESCAPE) {
+            if (event.type == SDL_QUIT) {
                 running = false;
                 // TODO: On mobile remember to use eventWatch function (it doesn't reach this code when terminating)
             }
@@ -657,6 +674,12 @@ void mainLoop()
                 buttons[event.button.button] = true;
                 if (SDL_PointInFRect(&mousePos, &playText.dstR)) {
                     state = State::Gameplay;
+                    restartLevel(player, applesRects, bots, teethR);
+                    bots.clear();
+                    playerPointsText.setText(renderer, robotoF, "0");
+                    enemyPointsText.setText(renderer, robotoF, "0");
+                    enemy2PointsText.setText(renderer, robotoF, "0");
+                    enemy3PointsText.setText(renderer, robotoF, "0");
                     if (botsCountValueText.text == "1") {
                         bots.push_back(Entity());
                         bots.back().r = generateEnemyR();
@@ -679,6 +702,15 @@ void mainLoop()
                 }
                 if (SDL_PointInFRect(&mousePos, &creditsText.dstR)) {
                     state = State::Credits;
+                }
+                if (SDL_PointInFRect(&mousePos, &soundR)) {
+                    soundsMuted = !soundsMuted;
+                    if (soundsMuted) {
+                        muteMusicAndSounds();
+                    }
+                    else {
+                        unmuteMusicAndSounds();
+                    }
                 }
                 if (SDL_PointInFRect(&mousePos, &leftArrowBtnR)) {
                     if (botsCountValueText.text == "2") {
@@ -721,11 +753,17 @@ void mainLoop()
         SDL_RenderCopyF(renderer, rightArrowT, 0, &rightArrowBtnR);
         playText.draw(renderer);
         creditsText.draw(renderer);
+        if (soundsMuted) {
+            SDL_RenderCopyF(renderer, muteT, 0, &soundR);
+        }
+        else {
+            SDL_RenderCopyF(renderer, unmuteT, 0, &soundR);
+        }
         SDL_RenderPresent(renderer);
     }
     else if (state == State::Gameplay) {
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT || event.type == SDL_KEYDOWN && event.key.keysym.scancode == SDL_SCANCODE_ESCAPE) {
+            if (event.type == SDL_QUIT) {
                 running = false;
                 // TODO: On mobile remember to use eventWatch function (it doesn't reach this code when terminating)
             }
@@ -734,6 +772,9 @@ void mainLoop()
             }
             if (event.type == SDL_KEYDOWN) {
                 keys[event.key.keysym.scancode] = true;
+                if (event.key.keysym.scancode == SDL_SCANCODE_ESCAPE) {
+                    state = State::Menu;
+                }
             }
             if (event.type == SDL_KEYUP) {
                 keys[event.key.keysym.scancode] = false;
@@ -865,7 +906,6 @@ void mainLoop()
                     if (SDL_HasIntersectionF(&player.r, &teethR) && !player.hasTeeths) {
                         player.hasTeeths = true;
                         Mix_PlayChannel(-1, pickupS, 0);
-                        // TODO: Generate 5 falling apples from up to down and let player eat them
                         for (int i = 0; i < 5; ++i) {
                             applesRects.push_back(SDL_FRect());
                             applesRects.back().w = 32;
@@ -886,21 +926,21 @@ void mainLoop()
                 else if (numbers[i] == 1) {
                     if (SDL_HasIntersectionF(&bots[0].r, &teethR) && !player.hasTeeths) {
                         enemyPointsText.setText(renderer, robotoF, std::stoi(enemyPointsText.text) + 5);
-                        restartLevel(player.r, applesRects, bots, teethR);
+                        restartLevel(player, applesRects, bots, teethR);
                         break;
                     }
                 }
                 else if (numbers[i] == 2) {
                     if (SDL_HasIntersectionF(&bots[1].r, &teethR) && !player.hasTeeths) {
                         enemy2PointsText.setText(renderer, robotoF, std::stoi(enemy2PointsText.text) + 5);
-                        restartLevel(player.r, applesRects, bots, teethR);
+                        restartLevel(player, applesRects, bots, teethR);
                         break;
                     }
                 }
                 else if (numbers[i] == 3) {
                     if (SDL_HasIntersectionF(&bots[2].r, &teethR) && !player.hasTeeths) {
                         enemy3PointsText.setText(renderer, robotoF, std::stoi(enemy3PointsText.text) + 5);
-                        restartLevel(player.r, applesRects, bots, teethR);
+                        restartLevel(player, applesRects, bots, teethR);
                         break;
                     }
                 }
@@ -913,7 +953,7 @@ void mainLoop()
             }
         }
         if (player.hasTeeths && applesRects.size() == 0) {
-            restartLevel(player.r, applesRects, bots, teethR);
+            restartLevel(player, applesRects, bots, teethR);
         }
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
         SDL_RenderClear(renderer);
@@ -959,7 +999,7 @@ void mainLoop()
     }
     else if (state == State::Credits) {
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT || event.type == SDL_KEYDOWN && event.key.keysym.scancode == SDL_SCANCODE_ESCAPE) {
+            if (event.type == SDL_QUIT) {
                 running = false;
                 // TODO: On mobile remember to use eventWatch function (it doesn't reach this code when terminating)
             }
@@ -974,7 +1014,7 @@ void mainLoop()
             }
             if (event.type == SDL_MOUSEBUTTONDOWN) {
                 buttons[event.button.button] = true;
-                if (SDL_PointInFRect(&mousePos,&backArrowBtnR)) {
+                if (SDL_PointInFRect(&mousePos, &backArrowBtnR)) {
                     state = State::Menu;
                 }
             }
@@ -995,6 +1035,7 @@ void mainLoop()
         authorText.draw(renderer);
         creditText.draw(renderer);
         credit2Text.draw(renderer);
+        credit3Text.draw(renderer);
         SDL_RenderCopyF(renderer, backArrowT, 0, &backArrowBtnR);
         SDL_RenderPresent(renderer);
     }
@@ -1026,6 +1067,8 @@ int main(int argc, char* argv[])
     character3T = IMG_LoadTexture(renderer, "res/character3.png");
     teethT = IMG_LoadTexture(renderer, "res/teeth.png");
     backArrowT = IMG_LoadTexture(renderer, "res/backArrow.png");
+    muteT = IMG_LoadTexture(renderer, "res/mute.png");
+    unmuteT = IMG_LoadTexture(renderer, "res/unmute.png");
     music = Mix_LoadMUS("res/music.wav");
     jumpS = Mix_LoadWAV("res/jump.wav");
     pickupS = Mix_LoadWAV("res/pickup.wav");
@@ -1110,10 +1153,19 @@ int main(int argc, char* argv[])
     credit2Text.dstR.h = 30;
     credit2Text.dstR.x = windowWidth / 2 - credit2Text.dstR.w / 2;
     credit2Text.dstR.y = creditText.dstR.y + creditText.dstR.h;
+    credit3Text.setText(renderer, robotoF, "Pixel perfect", {});
+    credit3Text.dstR.w = 100;
+    credit3Text.dstR.h = 30;
+    credit3Text.dstR.x = windowWidth / 2 - credit3Text.dstR.w / 2;
+    credit3Text.dstR.y = credit2Text.dstR.y + credit2Text.dstR.h;
     backArrowBtnR.w = 32;
     backArrowBtnR.h = 32;
     backArrowBtnR.x = 0;
     backArrowBtnR.y = 0;
+    soundR.w = 32;
+    soundR.h = 32;
+    soundR.x = 0;
+    soundR.y = 0;
     globalClock.restart();
 #ifdef __EMSCRIPTEN__
     emscripten_set_main_loop(mainLoop, 0, 1);
