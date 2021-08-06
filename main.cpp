@@ -1132,9 +1132,8 @@ int main(int argc, char* argv[])
     enemy3PointR.h = 32;
     enemy3PointR.x = windowWidth / 4 * 3;
     enemy3PointR.y = 0;
-    playerPointsText.autoAdjustW = true;
-    playerPointsText.wMultiplier = 0.4;
     playerPointsText.setText(renderer, robotoF, "0");
+    playerPointsText.dstR.w = 20;
     playerPointsText.dstR.h = 40;
     playerPointsText.dstR.x = playerPointR.x + playerPointR.w;
     playerPointsText.dstR.y = 0;
